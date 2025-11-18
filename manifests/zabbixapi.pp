@@ -9,6 +9,7 @@ class zabbix::zabbixapi (
   # Determine correct zabbixapi version.
   case $zabbix_version {
     /^[56]\.[024]/: {
+      $zabbixapi_source = undef
       $zabbixapi_version = '5.0.0-alpha1'
       if versioncmp($facts['ruby']['version'] , '3') < 0 {
         package { 'public_suffix':
@@ -17,6 +18,10 @@ class zabbix::zabbixapi (
         }
         Package['public_suffix'] -> Package['zabbixapi']
       }
+    }
+    /^[7]\.[024]/: {
+      $zabbixapi_source = 'https://github.com/markt-de/zabbixapi/releases/download/v5.0.0-alpha2/zabbixapi-5.0.0.pre.alpha2.gem'
+      $zabbixapi_version = '5.0.0-alpha2'
     }
     default: {
       fail("Zabbix ${zabbix_version} is not supported!")
@@ -36,5 +41,6 @@ class zabbix::zabbixapi (
   package { 'zabbixapi':
     ensure   => $zabbixapi_version,
     provider => $puppetgem,
+    source   => $zabbixapi_source,
   }
 }
