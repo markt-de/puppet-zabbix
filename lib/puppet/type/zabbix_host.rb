@@ -89,7 +89,7 @@ Puppet::Type.newtype(:zabbix_host) do
   newproperty(:groups, array_matching: :all) do
     desc 'An array of groups the host belongs to.'
     def insync?(is)
-      is.sort == should.sort
+      [is].flatten.sort == [should].flatten.sort
     end
   end
 
@@ -106,7 +106,7 @@ Puppet::Type.newtype(:zabbix_host) do
   newproperty(:templates, array_matching: :all) do
     desc 'List of templates which should be loaded for this host.'
     def insync?(is)
-      is.sort == should.sort
+      [is].flatten.sort == [should].flatten.sort
     end
   end
 

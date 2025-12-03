@@ -256,6 +256,7 @@ class zabbix::agent (
 
     class { 'zabbix::resources::agent':
       hostname         => $_hostname,
+      zabbix_version   => $zabbix_version,
       ipaddress        => $listen_ip,
       use_ip           => $agent_use_ip,
       port             => $listenport,
