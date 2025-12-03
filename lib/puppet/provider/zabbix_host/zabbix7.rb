@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../zabbix'
-Puppet::Type.type(:zabbix_host).provide(:ruby, parent: Puppet::Provider::Zabbix) do
+Puppet::Type.type(:zabbix_host).provide(:zabbix7, parent: Puppet::Provider::Zabbix) do
   desc 'Puppet provider for managing Zabbix hosts. It uses the Zabbix API to create, read, update and delete hosts.'
   confine feature: :zabbixapi
 
@@ -12,9 +12,9 @@ Puppet::Type.type(:zabbix_host).provide(:ruby, parent: Puppet::Provider::Zabbix)
       params: {
         selectParentTemplates: ['host'],
         selectInterfaces: %w[interfaceid type main ip port useip details],
-        selectGroups: ['name'],
+        selectHostGroups: ['name'],
         selectMacros: %w[macro value],
-        output: %w[host proxy_hostid tls_accept tls_connect tls_issuer tls_subject]
+        output: %w[host proxyid tls_accept tls_connect tls_issuer tls_subject]
       }
     )
 
@@ -23,7 +23,7 @@ Puppet::Type.type(:zabbix_host).provide(:ruby, parent: Puppet::Provider::Zabbix)
       # there is only 1 interface that can be default
       interface = h['interfaces'].select { |i| i['main'].to_i == 1 }.first
       use_ip = !interface['useip'].to_i.zero?
-      proxy_select = proxies.select { |_name, id| id == h['proxy_hostid'] }.keys.first
+      proxy_select = proxies.select { |_name, id| id == h['proxyid'] }.keys.first
       proxy_select = '' if proxy_select.nil?
       new(
         ensure: :present,
@@ -33,7 +33,7 @@ Puppet::Type.type(:zabbix_host).provide(:ruby, parent: Puppet::Provider::Zabbix)
         ipaddress: interface['ip'],
         use_ip: use_ip,
         port: interface['port'].to_i,
-        groups: h['groups'].map { |g| g['name'] },
+        hostgroups: h['hostgroups'].map { |g| g['name'] },
         group_create: nil,
         templates: h['parentTemplates'].map { |x| x['host'] },
         macros: h['macros'].map { |macro| { macro['macro'] => macro['value'] } },
@@ -63,15 +63,19 @@ Puppet::Type.type(:zabbix_host).provide(:ruby, parent: Puppet::Provider::Zabbix)
     gids = get_groupids(@resource[:groups], @resource[:group_create])
     groups = transform_to_array_hash('groupid', gids)
 
-    proxy_hostid = @resource[:proxy].nil? || @resource[:proxy].empty? ? nil : zbx.proxies.get_id(host: @resource[:proxy])
+    proxysettings = {}
+
+    unless @resource[:proxy].nil? || @resource[:proxy].empty?
+      proxysettings[:proxyid] = zbx.proxies.get_id(name: @resource[:proxy])
+      proxysettings[:monitored_by] = 1
+    end
 
     tls_accept = @resource[:tls_accept].nil? ? 1 : @resource[:tls_accept]
     tls_connect = @resource[:tls_connect].nil? ? 1 : @resource[:tls_connect]
 
     # Now we create the host
-    zbx.hosts.create(
+    zbx.hosts.create(proxysettings.merge(
       host: @resource[:hostname],
-      proxy_hostid: proxy_hostid,
       interfaces: [
         {
           type: @resource[:interfacetype].nil? ? 1 : @resource[:interfacetype],
@@ -89,7 +93,7 @@ Puppet::Type.type(:zabbix_host).provide(:ruby, parent: Puppet::Provider::Zabbix)
       tls_accept: tls_accept,
       tls_issuer: @resource[:tls_issuer].nil? ? '' : @resource[:tls_issuer],
       tls_subject: @resource[:tls_subject].nil? ? '' : @resource[:tls_subject]
-    )
+    ))
   end
 
   def exists?
@@ -185,6 +189,10 @@ Puppet::Type.type(:zabbix_host).provide(:ruby, parent: Puppet::Provider::Zabbix)
     )
   end
 
+  def groups
+    @property_hash[:hostgroups] || :absent
+  end
+
   def groups=(hostgroups)
     gids = get_groupids(hostgroups, @resource[:group_create])
     groups = transform_to_array_hash('groupid', gids)
@@ -231,10 +239,18 @@ Puppet::Type.type(:zabbix_host).provide(:ruby, parent: Puppet::Provider::Zabbix)
   end
 
   def proxy=(string)
-    zbx.hosts.create_or_update(
-      host: @resource[:hostname],
-      proxy_hostid: zbx.proxies.get_id(host: string)
-    )
+    if @resource[:proxy].nil? || @resource[:proxy].empty?
+      zbx.hosts.create_or_update(
+        host: @resource[:hostname],
+        monitored_by: 0
+      )
+    else
+      zbx.hosts.create_or_update(
+        host: @resource[:hostname],
+        proxyid: zbx.proxies.get_id(name: string),
+        monitored_by: 1
+      )
+    end
   end
 
   def tls_connect=(int)

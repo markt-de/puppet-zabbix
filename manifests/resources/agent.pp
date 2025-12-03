@@ -15,6 +15,7 @@
 # @param tls_issuer Issuer of the certificate that is allowed to talk with the serve
 # @param tls_subject Subject of the certificate that is allowed to talk with the server
 class zabbix::resources::agent (
+  $zabbix_version                     = $zabbix::params::zabbix_version,
   $hostname                           = undef,
   $ipaddress                          = undef,
   $use_ip                             = undef,
@@ -31,7 +32,13 @@ class zabbix::resources::agent (
   Optional[String[1]] $tls_issuer                         = undef,
   Optional[String[1]] $tls_subject                        = undef,
 ) {
+  $prov = $zabbix_version ? {
+    /^(\d+)(\.\d+)*$/ => "zabbix${1}",
+    default           => 'zabbix7',
+  }
+
   @@zabbix_host { $hostname:
+    provider         => $prov,
     ipaddress        => $ipaddress,
     use_ip           => $use_ip,
     port             => $port,
