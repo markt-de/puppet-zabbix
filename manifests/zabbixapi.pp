@@ -20,8 +20,8 @@ class zabbix::zabbixapi (
       }
     }
     /^[7]\.[024]/: {
-      $zabbixapi_source = 'https://github.com/markt-de/zabbixapi/releases/download/v5.0.0-alpha2/zabbixapi-5.0.0.pre.alpha2.gem'
-      $zabbixapi_version = '5.0.0-alpha2'
+      $zabbixapi_source = 'https://github.com/markt-de/zabbixapi/releases/download/v5.0.0-alpha3/zabbixapi-5.0.0.pre.alpha3.gem'
+      $zabbixapi_version = '5.0.0-alpha3'
     }
     default: {
       fail("Zabbix ${zabbix_version} is not supported!")
